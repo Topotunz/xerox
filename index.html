@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Фото-Ксерокопия</title>
+    <title>Эффект Изогелия</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -29,9 +29,9 @@
     </style>
 </head>
 <body>
-    <h1>Сделать фото как ксерокопию</h1>
+    <h1>Создание эффекта изогелия</h1>
     <input type="file" id="upload" accept="image/*">
-    <p class="loading">Загрузка...</p>
+    <p class="loading">Обработка...</p>
     <canvas id="canvas"></canvas>
     <button id="download">Скачать</button>
     <p id="error" class="error"></p>
@@ -44,15 +44,40 @@
         const loadingText = document.querySelector('.loading');
         const errorText = document.getElementById('error');
 
-        // Функция для применения контраста
-        function applyContrast(imageData, contrast) {
+        // Функция для создания эффекта изогелия
+        function createIsogelEffect(imageData) {
             const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                let newPixelValue = Math.max(0, Math.min(255, (avg - 128) * contrast + 128));
-                data[i] = newPixelValue;       // Red
-                data[i + 1] = newPixelValue;   // Green
-                data[i + 2] = newPixelValue;   // Blue
+            const width = imageData.width;
+            const height = imageData.height;
+
+            // Создаем градиент яркости (по сути, детектор краев)
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const index = (y * width + x) * 4;
+
+                    // Вычисляем среднюю яркость соседних пикселей
+                    const currentBrightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
+
+                    // Соседние пиксели
+                    const topBrightness = (data[index - width * 4] + data[index - width * 4 + 1] + data[index - width * 4 + 2]) / 3;
+                    const bottomBrightness = (data[index + width * 4] + data[index + width * 4 + 1] + data[index + width * 4 + 2]) / 3;
+                    const leftBrightness = (data[index - 4] + data[index - 3] + data[index - 2]) / 3;
+                    const rightBrightness = (data[index + 4] + data[index + 5] + data[index + 6]) / 3;
+
+                    // Вычисляем разницу яркости (градиент)
+                    const gradientX = Math.abs(leftBrightness - rightBrightness);
+                    const gradientY = Math.abs(topBrightness - bottomBrightness);
+
+                    // Общая интенсивность градиента
+                    const intensity = Math.sqrt(gradientX * gradientX + gradientY * gradientY);
+
+                    // Применяем инверсию для создания темных контуров
+                    const pixelValue = 255 - Math.min(255, intensity * 2);
+
+                    data[index] = pixelValue;       // Red
+                    data[index + 1] = pixelValue;   // Green
+                    data[index + 2] = pixelValue;   // Blue
+                }
             }
         }
 
@@ -77,7 +102,7 @@
                     ctx.drawImage(img, 0, 0);
 
                     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    applyContrast(imageData, 2); // Применяем контраст (значение можно изменить)
+                    createIsogelEffect(imageData); // Применяем эффект изогелия
                     ctx.putImageData(imageData, 0, 0);
 
                     loadingText.style.display = 'none'; // Скрываем индикатор загрузки
@@ -89,7 +114,7 @@
 
         downloadButton.addEventListener('click', function() {
             const link = document.createElement('a');
-            link.download = 'xerox-photo.jpg';
+            link.download = 'isogel-photo.jpg';
             link.href = canvas.toDataURL('image/jpeg', 0.8); // Оптимизируем качество JPEG до 80%
             link.click();
         });
