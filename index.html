@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Эффект Изогелия</title>
+    <title>Эффект Изогелия с настройками</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,6 +15,13 @@
             border: 1px solid black;
             max-width: 100%;
             height: auto;
+        }
+        .settings {
+            margin: 20px 0;
+        }
+        .settings label {
+            display: block;
+            margin: 10px 0;
         }
         .loading {
             display: none;
@@ -29,8 +36,22 @@
     </style>
 </head>
 <body>
-    <h1>Создание эффекта изогелия</h1>
+    <h1>Создание эффекта изогелия с настройками</h1>
     <input type="file" id="upload" accept="image/*">
+    <div class="settings">
+        <label>
+            Чувствительность к контурам:
+            <input type="range" id="sensitivity" min="1" max="5" value="3" step="0.1">
+        </label>
+        <label>
+            Толщина линий:
+            <input type="range" id="lineThickness" min="1" max="5" value="3" step="0.1">
+        </label>
+        <label>
+            Яркость фона:
+            <input type="range" id="backgroundBrightness" min="0" max="255" value="255" step="1">
+        </label>
+    </div>
     <p class="loading">Обработка...</p>
     <canvas id="canvas"></canvas>
     <button id="download">Скачать</button>
@@ -44,18 +65,27 @@
         const loadingText = document.querySelector('.loading');
         const errorText = document.getElementById('error');
 
+        // Ссылки на ползунки
+        const sensitivitySlider = document.getElementById('sensitivity');
+        const lineThicknessSlider = document.getElementById('lineThickness');
+        const backgroundBrightnessSlider = document.getElementById('backgroundBrightness');
+
         // Функция для создания эффекта изогелия
         function createIsogelEffect(imageData) {
             const data = imageData.data;
             const width = imageData.width;
             const height = imageData.height;
 
+            const sensitivity = parseFloat(sensitivitySlider.value); // Чувствительность к контурам
+            const lineThickness = parseFloat(lineThicknessSlider.value); // Толщина линий
+            const backgroundBrightness = parseInt(backgroundBrightnessSlider.value); // Яркость фона
+
             // Создаем градиент яркости (по сути, детектор краев)
             for (let y = 1; y < height - 1; y++) {
                 for (let x = 1; x < width - 1; x++) {
                     const index = (y * width + x) * 4;
 
-                    // Вычисляем среднюю яркость соседних пикселей
+                    // Вычисляем среднюю яркость текущего пикселя
                     const currentBrightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
 
                     // Соседние пиксели
@@ -69,10 +99,15 @@
                     const gradientY = Math.abs(topBrightness - bottomBrightness);
 
                     // Общая интенсивность градиента
-                    const intensity = Math.sqrt(gradientX * gradientX + gradientY * gradientY);
+                    const intensity = Math.sqrt(gradientX * gradientX + gradientY * gradientY) * sensitivity;
 
                     // Применяем инверсию для создания темных контуров
-                    const pixelValue = 255 - Math.min(255, intensity * 2);
+                    let pixelValue = 255 - Math.min(255, intensity * lineThickness);
+
+                    // Устанавливаем фоновую яркость
+                    if (pixelValue > backgroundBrightness) {
+                        pixelValue = backgroundBrightness;
+                    }
 
                     data[index] = pixelValue;       // Red
                     data[index + 1] = pixelValue;   // Green
@@ -110,6 +145,18 @@
                 };
             };
             reader.readAsDataURL(file);
+        });
+
+        // Перерисовка при изменении параметров
+        const settingsInputs = [sensitivitySlider, lineThicknessSlider, backgroundBrightnessSlider];
+        settingsInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                if (canvas.width > 0 && canvas.height > 0) {
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    createIsogelEffect(imageData);
+                    ctx.putImageData(imageData, 0, 0);
+                }
+            });
         });
 
         downloadButton.addEventListener('click', function() {
