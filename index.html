@@ -150,7 +150,10 @@
         function updateImage() {
             if (!originalImageData) return;
 
-            const tempImageData = ctx.createImageData(originalImageData);
+            // Создаем копию оригинальных данных, чтобы не изменять их напрямую
+            const tempImageData = ctx.createImageData(originalImageData.width, originalImageData.height);
+            tempImageData.data.set(new Uint8ClampedArray(originalImageData.data));
+
             applyContrast(tempImageData, parseFloat(contrastSlider.value)); // Применяем контраст
             applyBrightness(tempImageData, parseInt(brightnessSlider.value)); // Применяем яркость
             applyBinarization(tempImageData); // Применяем бинаризацию
